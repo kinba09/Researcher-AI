@@ -1,0 +1,17 @@
+You will be given a topic: "{topic}" and a max result count: {max_results}.
+
+Goal:
+Find high-quality academic papers on Google Scholar and arXiv about this topic.
+For each paper:
+- Capture: Title, Authors, Venue, Year, URL, Abstract (if visible)
+- If a free PDF is available open it and try Capture it
+- Return a structured JSON list with these fields.
+
+Steps:
+1) Open https://scholar.google.com/ and search: {topic} (last 5 years preferred).
+2) Open top results in new tabs (skip obvious citations pages).
+3) For each result, collect metadata and follow “PDF”/“arXiv” links if present.
+4) Avoid duplicates (same or near-same title).
+5) Stop after {max_results} unique papers.
+
+Return a concise, markdown-formatted summary with sources. Include JSON list of papers with keys: title, authors, venue, year, url, abstract, summary, tags.

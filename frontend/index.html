@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Researcher Agent using Browser Use</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Markdown parser + sanitizer -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.9/dist/purify.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    html, body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    .card { box-shadow: 0 10px 25px rgba(0,0,0,0.06); border-radius: 1rem; }
+    /* Lightweight "prose" styling without Tailwind Typography plugin */
+    .prose { color:#111827; }
+    .prose h1 { font-size:1.75rem; font-weight:700; margin-top:1.25rem; margin-bottom:.75rem; }
+    .prose h2 { font-size:1.375rem; font-weight:700; margin-top:1rem; margin-bottom:.5rem; }
+    .prose h3 { font-size:1.125rem; font-weight:600; margin-top:.75rem; margin-bottom:.5rem; }
+    .prose p, .prose ul, .prose ol { margin:.5rem 0; line-height:1.6; }
+    .prose code { background:#f3f4f6; padding:.15rem .35rem; border-radius:.375rem; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.9em; }
+    .prose pre { background:#f8fafc; color:#111827; padding:1rem; border-radius:.75rem; overflow:auto; }
+    .prose a { color:#4f46e5; text-decoration:underline; }
+    .prose blockquote { border-left:4px solid #e5e7eb; padding-left:.75rem; color:#374151; margin:.75rem 0; }
+    .prose hr { border:0; border-top:1px solid #e5e7eb; margin:1rem 0; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div class="max-w-6xl mx-auto p-6">
+    <header class="mb-6">
+      <h1 class="text-3xl font-bold tracking-tight">⚡ Researcher Agent using Browser Use</h1>
+      <p class="text-gray-600">Run your Python agent and get rendered Markdown output.</p>
+    </header>
+
+    <div class="card bg-white p-6 mb-6">
+      <form id="runnerForm" class="grid grid-cols-1 md:grid-cols-12 gap-4">
+        <div class="md:col-span-5">
+          <label class="block text-sm font-medium text-gray-700">Backend API Base URL</label>
+          <input id="apiBase" type="url" required placeholder="http://127.0.0.1:8000" class="mt-1 w-full rounded-xl border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          <p class="text-xs text-gray-500 mt-1">Set once; used for all requests. No trailing slash.</p>
+        </div>
+        <div class="md:col-span-4">
+          <label class="block text-sm font-medium text-gray-700">Topic</label>
+          <input id="topic" type="text" placeholder="concerns of ai" class="mt-1 w-full rounded-xl border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Max results</label>
+          <input id="maxResults" type="number" min="1" max="30" value="5" class="mt-1 w-full rounded-xl border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Headless</label>
+          <select id="headless" class="mt-1 w-full rounded-xl border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="true" selected>True (server)</option>
+            <option value="false">False (local debug)</option>
+          </select>
+        </div>
+        <div class="md:col-span-2 flex items-end">
+          <button id="runBtn" type="submit" class="w-full bg-indigo-600 text-white font-medium px-4 py-2 rounded-xl hover:bg-indigo-700 active:scale-[.99] transition">Run Agent</button>
+        </div>
+      </form>
+    </div>
+
+    <section class="card bg-white p-6">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-xl font-semibold">Output (Markdown)</h2>
+        <div class="flex gap-2 items-center">
+          <span id="runStatus" class="text-sm text-gray-500">Idle</span>
+          <button id="copyBtn" class="px-3 py-1.5 rounded-lg border text-sm hover:bg-gray-50">Copy Markdown</button>
+          <button id="downloadBtn" class="px-3 py-1.5 rounded-lg border text-sm hover:bg-gray-50">Download .md</button>
+        </div>
+      </div>
+      <!-- Rendered HTML goes here -->
+      <article id="output" class="prose max-w-none">— no output yet —</article>
+      <details class="mt-3">
+        <summary class="text-sm text-gray-600 cursor-pointer">Raw JSON</summary>
+        <pre id="raw" class="mono whitespace-pre text-xs text-gray-700 overflow-auto max-h-[420px]">{}</pre>
+      </details>
+    </section>
+  </div>
+
+  <script>
+  const form = document.getElementById('runnerForm');
+  const runBtn = document.getElementById('runBtn');
+  const apiBase = document.getElementById('apiBase');
+  const topic = document.getElementById('topic');
+  const headless = document.getElementById('headless');
+  const maxResults = document.getElementById('maxResults'); // <— define it
+
+  const runStatus = document.getElementById('runStatus');
+  const output = document.getElementById('output');
+  const raw = document.getElementById('raw');
+  const copyBtn = document.getElementById('copyBtn');
+  const downloadBtn = document.getElementById('downloadBtn');
+
+  // keep the original markdown for copy/download
+  let lastMarkdown = '';
+
+  // If you’re using marked + DOMPurify (from earlier),
+  // they must be included via <script> tags in <head>.
+  marked.setOptions({ gfm: true, breaks: true });
+
+  function setBusy(b){
+    runBtn.disabled = b;
+    runBtn.textContent = b ? 'Running…' : 'Run Agent';
+    runStatus.textContent = b ? 'Running…' : 'Idle';
+  }
+
+  function renderMarkdown(md){
+    lastMarkdown = typeof md === 'string' ? md : '';
+    if (!lastMarkdown.trim()) {
+      output.textContent = '— (no final text) —';
+      return;
+    }
+    const html = DOMPurify.sanitize(marked.parse(lastMarkdown));
+    output.innerHTML = html;
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    renderMarkdown('Running… this may take a moment.');
+    raw.textContent = '{}';
+
+    try {
+      const base = apiBase.value.replace(/\/$/, '');
+      const limit = Math.max(1, Math.min(50, Number(maxResults.value || 5)));
+      const res = await fetch(`${base}/run`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic: topic.value || 'concerns of ai',
+          max_results: limit,                 // <— send max results
+          headless: headless.value === 'true' // no max_steps sent
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(()=>({detail: res.statusText}));
+        throw new Error(err.detail || 'Request failed');
+      }
+
+      const json = await res.json();
+      raw.textContent = JSON.stringify(json, null, 2);
+
+      const text = json?.data?.final_result;
+      renderMarkdown(text);
+
+    } catch (err) {
+      renderMarkdown(`❌ **Error:** ${err.message}`);
+    } finally {
+      setBusy(false);
+    }
+  });
+
+  copyBtn.addEventListener('click', async () => {
+    await navigator.clipboard.writeText(lastMarkdown || '');
+    copyBtn.textContent = 'Copied!';
+    setTimeout(() => (copyBtn.textContent = 'Copy Markdown'), 1200);
+  });
+
+  downloadBtn.addEventListener('click', () => {
+    const blob = new Blob([lastMarkdown || ''], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `agent-output-${Date.now()}.md`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  // Persist API base locally
+  apiBase.value = localStorage.getItem('apiBase') || 'http://127.0.0.1:8000';
+  apiBase.addEventListener('change', ()=> localStorage.setItem('apiBase', apiBase.value));
+</script>
+
+</body>
+</html>
