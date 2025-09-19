@@ -121,7 +121,7 @@ async def run_agent(topic: str, max_results: int, max_steps: int, headless: bool
             keep_alive=False,
             # These kwargs are ignored by older versions, harmless if unsupported:
             #browser_type=os.getenv("BROWSER_USE_PLAYWRIGHT_BROWSER", "chromium"),
-            use_cloud = True,
+            cloud_browser = True,
             api_key=os.getenv("BROWSER_USE_API_KEY", None)
         )
     except Exception as e:
