@@ -119,6 +119,8 @@ async def run_agent(topic: str, max_results: int, max_steps: int, headless: bool
             window_size={"width": 1200, "height": 800},
             headless=headless,
             keep_alive=False,
+            # These kwargs are ignored by older versions, harmless if unsupported:
+            browser_type=os.getenv("BROWSER_USE_PLAYWRIGHT_BROWSER", "chromium"),
         )
     except Exception as e:
         # Very common: Playwright not installed or Chromium missing
