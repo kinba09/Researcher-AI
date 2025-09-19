@@ -120,7 +120,9 @@ async def run_agent(topic: str, max_results: int, max_steps: int, headless: bool
             headless=headless,
             keep_alive=False,
             # These kwargs are ignored by older versions, harmless if unsupported:
-            browser_type=os.getenv("BROWSER_USE_PLAYWRIGHT_BROWSER", "chromium"),
+            #browser_type=os.getenv("BROWSER_USE_PLAYWRIGHT_BROWSER", "chromium"),
+            use_cloud = True
+            api_key=os.getenv("BROWSER_USE_API_KEY", None)
         )
     except Exception as e:
         # Very common: Playwright not installed or Chromium missing
